@@ -6,9 +6,9 @@ A simple, offline-friendly web app for picking calming activities. Open it in a 
 
 After enabling Pages (see below), the app will be at:
 
-**https://YOUR-GITHUB-USERNAME.github.io/calmcards/**
+**https://lilyeastwood.github.io/calmcards/**
 
-Replace `YOUR-GITHUB-USERNAME` with your GitHub username. If you name the repo something other than `calmcards`, use that name in the URL instead.
+After the first visit online, the app caches itself and works offline from the home screen icon.
 
 ## Enable GitHub Pages
 
@@ -32,6 +32,8 @@ Most content lives in `index.html`:
 - **Icon** — replace `dragonflyicon.png` (use a square image, ideally 512×512)
 
 After editing, commit and push — the site updates automatically.
+
+When you change the app, bump the version in `service-worker.js` (e.g. `calmcards-v1` → `calmcards-v2`) so phones pick up the update.
 
 ## Local preview
 
