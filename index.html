@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Pick a calming activity when you need a little help." />
+  <meta name="theme-color" content="#FAF8F5" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Calm Cards" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="dragonflyicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="dragonflyicon.png" />
+  <title>What shall I do?</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #FAF8F5;
+      color: #2C2C2A;
+      min-height: 100vh;
+      padding: 2rem 1.25rem;
+    }
+
+    .screen { display: none; flex-direction: column; align-items: center; max-width: 400px; margin: 0 auto; }
+    .screen.active { display: flex; }
+    #screen-picker { justify-content: center; min-height: 100vh; }
+
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 1.75rem; text-align: center; }
+
+    /* ── chips ── */
+    .chips { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; justify-content: center; }
+    .chip { padding: 10px 16px; min-height: 44px; border-radius: 20px; border: 1px solid #C7C5BC; background: #fff; color: #5F5E5A; font-size: 14px; cursor: pointer; transition: all 0.15s; }
+    .chip.active-low  { background: #EAF3DE; color: #27500A; border-color: #639922; }
+    .chip.active-mid  { background: #FAEEDA; color: #633806; border-color: #BA7517; }
+    .chip.active-high { background: #FAECE7; color: #4A1B0C; border-color: #993C1D; }
+
+    /* ── main card ── */
+    .main-card {
+      background: #fff; border: 1px solid #E0DED7; border-radius: 16px;
+      padding: 2rem 1.5rem; min-height: 160px; width: 100%;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; margin-bottom: 1.25rem; position: relative;
+    }
+    .card-label { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: #888780; margin-bottom: 0.75rem; }
+    .card-title { font-size: 16px; font-weight: 500; color: #2C2C2A; margin-bottom: 0.5rem; }
+    .card-text  { font-size: 15px; line-height: 1.6; color: #2C2C2A; white-space: pre-line; }
+    .card-hint  { font-size: 13px; color: #888780; margin-top: 0.6rem; }
+    .main-heart {
+      position: absolute; top: 10px; right: 12px;
+      background: none; border: none; font-size: 20px; cursor: pointer;
+      color: #C7C5BC; line-height: 1; min-width: 44px; min-height: 44px;
+      display: none; align-items: center; justify-content: center;
+      transition: color 0.15s, transform 0.15s;
+    }
+    .main-heart.saved { color: #D4537E; }
+    .main-heart:active { transform: scale(1.25); }
+
+    /* ── buttons ── */
+    .roll-btn {
+      width: 100%; padding: 15px; border-radius: 12px;
+      border: 1px solid #C7C5BC; background: #EEECEA;
+      font-size: 16px; font-weight: 500; color: #2C2C2A;
+      cursor: pointer; transition: transform 0.1s, background 0.15s; margin-bottom: 0.75rem;
+    }
+    .roll-btn:active { transform: scale(0.98); background: #E5E3E0; }
+    .deck-link { background: none; border: none; color: #888780; font-size: 14px; cursor: pointer; padding: 6px 0; text-decoration: underline; text-underline-offset: 3px; }
+    .deck-link:hover { color: #5F5E5A; }
+
+    /* ── deck screen ── */
+    #screen-deck { align-items: stretch; padding-top: 0.5rem; }
+
+    .deck-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1.25rem; padding-top: 0.5rem; width: 100%; }
+    .back-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: #5F5E5A; padding: 4px 8px 4px 0; line-height: 1; }
+    .deck-header h2 { font-size: 18px; font-weight: 500; flex: 1; }
+
+    .deck-toolbar { display: flex; gap: 8px; margin-bottom: 1.25rem; width: 100%; flex-wrap: wrap; }
+    .toolbar-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1px solid #C7C5BC;
+      background: #fff; color: #5F5E5A; font-size: 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .toolbar-btn.on { background: #FBEAF0; color: #72243E; border-color: #D4537E; }
+    .toolbar-btn.add { background: #EEECEA; border-color: #C7C5BC; color: #2C2C2A; }
+
+    .deck-section { margin-bottom: 1.75rem; width: 100%; }
+    .deck-section-title { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: #888780; margin-bottom: 0.75rem; padding-bottom: 6px; border-bottom: 1px solid #E0DED7; }
+
+    .deck-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #F0EEE9; }
+    .deck-item:last-child { border-bottom: none; }
+    .deck-item-text { flex: 1; }
+    .deck-item-title { font-size: 14px; font-weight: 500; color: #2C2C2A; margin-bottom: 2px; }
+    .deck-item-main { font-size: 13px; color: #5F5E5A; line-height: 1.5; white-space: pre-line; }
+    .deck-item-hint { font-size: 12px; color: #888780; margin-top: 3px; }
+
+    .deck-item-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; padding-top: 2px; }
+    .heart-btn { background: none; border: none; font-size: 18px; cursor: pointer; color: #C7C5BC; line-height: 1; transition: color 0.15s, transform 0.15s; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .heart-btn.saved { color: #D4537E; }
+    .heart-btn:active { transform: scale(1.3); }
+    .edit-btn, .del-btn { background: none; border: none; font-size: 14px; cursor: pointer; color: #B4B2A9; line-height: 1; transition: color 0.15s; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+    .edit-btn:hover { color: #5F5E5A; }
+    .del-btn:hover  { color: #993C1D; }
+
+    .empty-msg { text-align: center; color: #888780; font-size: 15px; padding: 2rem 0; width: 100%; }
+
+    /* ── modal overlay ── */
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(44,44,42,0.45);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 100; padding: 0;
+    }
+    .modal-bg.hidden { display: none; }
+    .modal {
+      background: #FAF8F5; border-radius: 20px 20px 0 0;
+      padding: 1.5rem 1.25rem calc(2rem + env(safe-area-inset-bottom, 0px));
+      width: 100%; max-width: 460px;
+    }
+    .modal h3 { font-size: 17px; font-weight: 500; margin-bottom: 1.25rem; }
+    .modal label { font-size: 13px; color: #5F5E5A; display: block; margin-bottom: 4px; margin-top: 12px; }
+    .modal input, .modal textarea, .modal select {
+      width: 100%; padding: 10px 12px; border-radius: 10px;
+      border: 1px solid #C7C5BC; background: #fff;
+      font-size: 15px; font-family: inherit; color: #2C2C2A;
+      appearance: none;
+    }
+    .modal textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 1.25rem; }
+    .modal-save {
+      flex: 1; padding: 13px; border-radius: 12px; border: 1px solid #C7C5BC;
+      background: #EEECEA; font-size: 15px; font-weight: 500; color: #2C2C2A;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .modal-save:active { background: #E5E3E0; }
+    .modal-cancel {
+      padding: 13px 20px; border-radius: 12px; border: 1px solid #C7C5BC;
+      background: #fff; font-size: 15px; color: #5F5E5A; cursor: pointer;
+    }
+    .modal-error { font-size: 13px; color: #993C1D; margin-top: 6px; display: none; }
+    .modal-body-text { font-size: 15px; line-height: 1.5; color: #5F5E5A; }
+    .modal-delete {
+      flex: 1; padding: 13px; border-radius: 12px; border: 1px solid #993C1D;
+      background: #FAECE7; font-size: 15px; font-weight: 500; color: #4A1B0C;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .modal-delete:active { background: #F5DDD4; }
+    .storage-toast {
+      position: fixed; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); left: 50%;
+      transform: translateX(-50%); background: #4A1B0C; color: #FAF8F5;
+      font-size: 13px; padding: 10px 16px; border-radius: 10px; z-index: 200;
+      max-width: calc(100% - 2rem); text-align: center; display: none;
+    }
+    .storage-toast.show { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- ── PICKER ── -->
+  <div class="screen active" id="screen-picker">
+    <h1 id="page-title">What shall I do?</h1>
+    <div class="chips">
+      <button class="chip active-low" data-level="low"  onclick="selectLevel('low')">Maintenance</button>
+      <button class="chip"            data-level="mid"  onclick="selectLevel('mid')">Not feeling good</button>
+      <button class="chip"            data-level="high" onclick="selectLevel('high')">Overwhelmed</button>
+    </div>
+    <div class="main-card">
+      <button class="main-heart" id="main-heart" onclick="toggleFavCurrent()" aria-label="Save to favourites">♡</button>
+      <div class="card-label" id="card-label">Maintenance</div>
+      <div id="card-live" aria-live="polite" aria-atomic="true">
+        <div class="card-title" id="card-title"></div>
+        <div class="card-text"  id="card-text">Tap below for a suggestion</div>
+      </div>
+      <div class="card-hint"  id="card-hint"></div>
+    </div>
+    <button class="roll-btn" onclick="roll()">Give me something to try</button>
+    <button class="deck-link" onclick="showDeck()">See all cards &amp; add your own</button>
+  </div>
+
+  <!-- ── DECK ── -->
+  <div class="screen" id="screen-deck">
+    <div class="deck-header">
+      <button class="back-btn" onclick="showPicker()" aria-label="Back">←</button>
+      <h2>All cards</h2>
+    </div>
+    <div class="deck-toolbar">
+      <button class="toolbar-btn" id="fav-filter-btn" onclick="toggleFavFilter()">♡ Favourites</button>
+      <button class="toolbar-btn add" onclick="openAddModal()">+ Add a card</button>
+    </div>
+    <div id="deck-list"></div>
+  </div>
+
+  <div class="storage-toast" id="storage-toast" role="status"></div>
+
+  <!-- ── ADD / EDIT MODAL ── -->
+  <div class="modal-bg hidden" id="modal-bg" onclick="modalBgClick(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h3 id="modal-title">Add a card</h3>
+      <label for="modal-level">Stress level</label>
+      <select id="modal-level">
+        <option value="low">Maintenance</option>
+        <option value="mid">Not feeling good</option>
+        <option value="high">Overwhelmed</option>
+      </select>
+      <label for="modal-name">Title</label>
+      <input type="text" id="modal-name" placeholder="e.g. Cold shower" maxlength="60" />
+      <label for="modal-body">What to do</label>
+      <textarea id="modal-body" placeholder="Describe the activity…" maxlength="600"></textarea>
+      <label for="modal-hint">Small note (optional)</label>
+      <input type="text" id="modal-hint" placeholder="e.g. Takes about 5 minutes" maxlength="80" />
+      <div class="modal-error" id="modal-error">Please add a title and description.</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+        <button class="modal-save"   onclick="saveModal()">Save card</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DELETE CONFIRM MODAL ── -->
+  <div class="modal-bg hidden" id="delete-modal-bg" onclick="deleteModalBgClick(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+      <h3 id="delete-modal-title">Delete this card?</h3>
+      <p class="modal-body-text">This can't be undone.</p>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeDeleteModal()">Keep card</button>
+        <button class="modal-delete" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+
+    /* =========================================================
+       ACTIVITIES
+       Each entry: { title, text, hint (optional) }
+       Three categories: low / mid / high
+       Add your own below — or use the "Add a card" button in the app.
+       ========================================================= */
+
+    const activities = {
+
+      low: [
+        {
+          title: "Breath of the Heart",
+          text: "Place one hand over your heart and breathe as if the breath is flowing in and out of it directly. Repeat 5 times.\n\nThen spend 1–5 minutes recalling a moment of deep peace, love, or gratitude. Let that feeling wash over you.",
+          hint: ""
+        },
+        {
+          title: "Twist It Out",
+          text: "Lie on your back, knees bent, feet flat. Shift your hips slightly left and lower both knees to the right into a gentle spinal twist. Breathe slowly for 5–10 breaths.\n\nRepeat on the other side.",
+          hint: "Pop a pillow under your bottom knee if your hips are stiff"
+        },
+        {
+          title: "Sphinx Reset",
+          text: "Lie on your belly, elbows under your shoulders, forearms flat. Press your chest forward and turn your gaze over one shoulder. Hold for 10–20 seconds, breathing into your belly.\n\nRest, then repeat on the other side.",
+          hint: ""
+        },
+        {
+          title: "The Fractal Effect",
+          text: "Search 'fractals' online and let your eyes rest on an image for at least 10 seconds — taking in the colours, patterns, and detail.\n\nLet yourself get lost in it.",
+          hint: "Needs internet — or use any detailed photo you have saved"
+        },
+        {
+          title: "Earthing",
+          text: "Walk barefoot on grass, dirt, or sand for 20 minutes if you can.\n\nAs you walk, imagine pulling the earth's grounding energy up through your feet and into your whole body.",
+          hint: "Even a couple of minutes counts"
+        },
+        {
+          title: "Finding Ground",
+          text: "Lie on the floor or sit with your back supported. Notice the texture and temperature of the surface beneath you. Feel the full weight of your body being safely held.\n\nSoften your muscles, skin, and bones into it.",
+          hint: ""
+        },
+        {
+          title: "Seeking Sparkles",
+          text: "Find one small moment today — a 'sparkle' — where you feel safe, peaceful, or simply okay. Hold it in your awareness for 20–30 seconds.\n\nNotice the quality of your thoughts, breath, and body in that moment.",
+          hint: "Tiny things count"
+        },
+        {
+          title: "Drawing in the Senses",
+          text: "Start with the furthest sounds you can hear. Slowly bring your attention closer — sounds outside, sounds in the room, then sounds from your own body.\n\nNotice what's shifted when you finish.",
+          hint: ""
+        },
+        {
+          title: "Giving the Side Eye",
+          text: "Lie back or interlace your hands behind your head. Keep your head still and shift your gaze to the far left edge of the room. Hold until you sigh, yawn, or take a deeper breath — that's a nervous system reset.\n\nRepeat on the right.",
+          hint: ""
+        },
+        {
+          title: "Free Talk",
+          text: "Voice note yourself for 5–10 minutes — no filter, no order, just let it spill out however it wants to come.\n\nWhen you're done, delete it without listening back.",
+          hint: "Getting it out matters more than what you say"
+        },
+        {
+          title: "Gratitude Game",
+          text: "Find one new thing every day to be genuinely grateful for. Bring it back to your senses — what did you smell, see, hear, taste, or feel?\n\nThe more detail you notice, the more you'll actually feel it.",
+          hint: ""
+        },
+        {
+          title: "Nature Medicine",
+          text: "Take your next break outside and spend 10–30 minutes in the sun. Slow your breath and feel the warmth on your skin.\n\nThen let your eyes rest on something green or blue — these colours signal your brain to relax.",
+          hint: ""
+        },
+        {
+          title: "Anchor Into Calm",
+          text: "Think of 3+ things in each category that make you feel safe and welcome:\n— Who (a person, a pet)\n— What (an activity, a comfort object)\n— Where (a place)\n— When (a specific memory)\n\nWhen you feel anxious, recall one of these fully — what did you see, feel, smell, taste, touch?",
+          hint: ""
+        },
+        {
+          title: "Resilience Routine",
+          text: "Open the full card deck and choose 3 activities that have helped you most. Screenshot them or note them down somewhere visible, and start doing them regularly.",
+          hint: "Tap 'See all cards' from the home screen"
+        },
+      ],
+
+      mid: [
+        {
+          title: "Finger Holds",
+          text: "Wrap your opposite hand firmly around one finger at a time for 2–3 minutes each, or until you feel a gentle pulse. Each finger is linked to a different emotion — move through all five or go straight to the one that fits.\n\nRelease slowly and notice what's changed.",
+          hint: "Thumb: worry · Index: fear · Middle: anger · Ring: grief · Pinky: trying too hard"
+        },
+        {
+          title: "Growing Moon",
+          text: "Stand with feet shoulder-width apart, hands held in front of your belly as if cupping the moon between them.\n\nInhale — slowly separate your hands as your breath expands. Exhale — draw them back together. Repeat 5 times.",
+          hint: ""
+        },
+        {
+          title: "Drawing Rainbows",
+          text: "Stand with feet shoulder-width apart. Bring the backs of your hands together below your belly button.\n\nInhale — trace your hands up the midline of your body. As they reach overhead, flip fingers to the sky. Exhale — sweep both arms out and down like a rainbow. Repeat 5 times.",
+          hint: ""
+        },
+        {
+          title: "Buddha Breath",
+          text: "Lie down or sit comfortably. One hand on your chest, one on your belly.\n\nBreath in through your nose, sending the breath down so your belly expands outwards — the hand on your chest stays still. Exhale through your nose, belly softens back. Repeat 10 times.",
+          hint: "Don't worry if it takes practice — it does for everyone"
+        },
+        {
+          title: "Door Frame Breath",
+          text: "Find a door frame and let your eyes trace the width of it as you slowly inhale. Then trace the full height — all the way down — as you exhale.\n\nRepeat 5–8 times, letting the breath get slower each round.",
+          hint: "The longer exhale is what signals safety to your nervous system"
+        },
+        {
+          title: "Foot Work",
+          text: "Sit with your feet flat on the floor. Inhale — press the balls of your feet down and lift both heels. Exhale — release your full heel weight into the ground. Pause and feel the reverberation. Repeat 10 times.",
+          hint: ""
+        },
+        {
+          title: "My Safe Space",
+          text: "Scan your body until you find one spot that feels even slightly comfortable — your left pinky, your right ear, anywhere.\n\nRest your attention there for 30 seconds. What colour would it be? What texture? As you breathe, see if that feeling slowly spreads.",
+          hint: ""
+        },
+        {
+          title: "Dance Yourself Free",
+          text: "Put on a favourite song and bring movement into the parts of your body that have felt most tense. Focus on what it feels like, not what it looks like.\n\nWhat would joy, freedom, or power look like in your body right now?",
+          hint: ""
+        },
+        {
+          title: "Progressive Relaxation",
+          text: "One by one, tense each muscle group: inhale as you engage it, hold at maximum tension for 5 seconds, then exhale and fully release.\n\nWork through feet, calves, thighs, belly, hands, arms, shoulders, face.",
+          hint: "Notice the contrast between tension and release"
+        },
+        {
+          title: "Self Compassion",
+          text: "Say one of these to yourself — out loud if you can:\n\n'It makes sense I feel this way. Anyone would.'\n'I'm doing my best with what I have right now.'\n'Setbacks are normal. I can be gentle with myself here.'\n'All my emotions — good or difficult — are welcome.'",
+          hint: ""
+        },
+        {
+          title: "Sigh of Relief",
+          text: "Breathe in through your nose. Open your mouth and let out a long, audible sigh — whatever sound wants to come.\n\nFeel the vibration at the back of your throat. Repeat 3–6 times.",
+          hint: ""
+        },
+        {
+          title: "Child's Pose",
+          text: "Kneel on a soft surface and sit back towards your heels. Stretch your arms forward and press your forehead down between them.\n\nOr interlace your hands behind your head, palms at the base of your skull, elbows resting on the floor. Breathe slowly for 1–3 minutes.",
+          hint: ""
+        },
+        {
+          title: "Forward Fold",
+          text: "Stand with feet wider than hip-width, hands on hips. Inhale tall, then exhale and fold forward from the hips.\n\nLet your fingertips rest on the floor, a book, or a chair. Breathe slowly for 30 seconds to 2 minutes.",
+          hint: "Imagine the stress of the day pouring out through the top of your head"
+        },
+        {
+          title: "Alternate Nostril Breath",
+          text: "Rest your pointer and middle fingers between your eyebrows. Inhale through both nostrils.\n\nClose the right nostril with your thumb — exhale left, then inhale left. Close the left with your ring finger — exhale right, inhale right. That's one cycle. Repeat 5–10 times.",
+          hint: ""
+        },
+        {
+          title: "Laugh Therapy",
+          text: "Find your version of funny — silly animal videos, epic fails, a voice note to a mate, an inside joke.\n\nLaughter lowers stress hormones and gives you a burst of the good ones.",
+          hint: ""
+        },
+        {
+          title: "Rising Sun, Falling Rain",
+          text: "Stand with feet shoulder-width apart. Inhale — turn palms out and sweep your arms up and overhead, fingers reaching to the sky. Exhale — turn palms down and sweep them gently down in front of your body.\n\nRepeat 5 times.",
+          hint: ""
+        },
+        {
+          title: "Soft Eyes",
+          text: "Close your eyes and imagine them sinking back gently into your head — heavy, soft, like small weights. Feel your eyelids as light blankets.\n\nRelax everything: eyebrows, jaw, sides of your head, neck.",
+          hint: ""
+        },
+        {
+          title: "Speak Your Peace",
+          text: "Place a hand on your heart or belly and repeat a mantra slowly:\n\n'Breathing in, I calm my body. Breathing out, I smile.'\n'Breathing in, I remember I deserve rest. Breathing out, I soften.'\n'Breathing in, I feel my feet. Breathing out, I am rooted.'",
+          hint: "Or choose any words that feel right"
+        },
+      ],
+
+      high: [
+        {
+          title: "Voo Breathing",
+          text: "Take a slow, deep breath in. On the exhale, sound the word 'Voooo' in a deep foghorn tone from the back of your throat — let it last until every bit of breath is gone.\n\nRepeat 5–10 times. You should feel the vibration in your belly.",
+          hint: ""
+        },
+        {
+          title: "Shake It Out",
+          text: "Start shaking your hands — loose, in all directions. Let it move into your shoulders, chest, hips, legs, feet, and then your full body.\n\nKeep going for 1–5 minutes. Then stop and notice what's changed.",
+          hint: ""
+        },
+        {
+          title: "Sound Relief",
+          text: "Make a playlist of songs that bring you joy or excitement. Turn it up and sing along — full focus on the lyrics and sound.\n\nBonus if you pick a song that takes you back to a time you felt safe and happy.",
+          hint: ""
+        },
+        {
+          title: "5-4-3-2-1 Grounding",
+          text: "Identify:\n5 things you can feel\n4 things you can see\n3 things you can hear\n2 things you can smell\n1 thing you can taste\n\nThe more detail, the more grounded you'll feel.",
+          hint: ""
+        },
+        {
+          title: "Tonglen",
+          text: "Focus on whatever is hard right now. As you inhale, breathe it in — for yourself and for everyone else in the world feeling the same way. As you exhale, send out the opposite: peace if you're anxious, confidence if you're feeling small.\n\nYou're not alone in this.",
+          hint: ""
+        },
+        {
+          title: "A Shocking Bite",
+          text: "Bite into a lemon or something equally sharp and sour.\n\nThe intense sensation redirects your brain completely away from the stress spiral and onto what's happening in your mouth right now.",
+          hint: "Works with very cold water too"
+        },
+        {
+          title: "Plank",
+          text: "Palms flat on the floor, shoulder-width apart. Legs extended back, toes pressing into the floor.\n\nFeel the lift between your shoulder blades and breathe deeply. Hold for 30 seconds.",
+          hint: "Focus on sensation, not time"
+        },
+        {
+          title: "Eye'm Calm",
+          text: "Keep your head still and pick two objects — one on your far right, one on your far left. Flick your gaze rapidly between them, side to side, for 25–50 repetitions.\n\nA yawn, sigh, or deep breath means it's working.",
+          hint: ""
+        },
+        {
+          title: "Hold Tight",
+          text: "Place your right hand under your left armpit, thumb forward. Use your left hand to grip your right arm below the shoulder.\n\nBreathe into the space between your arms and remind yourself: 'All of my feelings can be safely held here.' Stay until you feel yourself settle.",
+          hint: ""
+        },
+        {
+          title: "Humming Bee Breath",
+          text: "Inhale through your nose. Exhale through a closed mouth, making a low hum at the back of your throat.\n\nTo deepen it: cover your ears with your hands, or lie face-down with your belly pressed to the floor.",
+          hint: ""
+        },
+        {
+          title: "Tapping",
+          text: "While repeating 'Even though I feel [overwhelmed/anxious/etc.], I deeply and completely love and accept myself', tap firmly on each point 7–8 times:\n1. Side of hand (below pinky)\n2. Crown of head\n3. Between eyebrows\n4. Side of eye\n5. Under eye\n6. Under nose\n7. Chin\n8. Collarbones\n9. Under armpit\n\nTake full breaths between rounds. Repeat until something shifts.",
+          hint: ""
+        },
+        {
+          title: "Butterfly Hug",
+          text: "Cross your arms over your chest, each hand resting near your collarbone. Optionally interlace your thumbs.\n\nAlternately tap each hand on your chest in a slow, steady rhythm. Focus on the tapping sensation. Count backwards from 100 if your mind is racing.",
+          hint: ""
+        },
+        {
+          title: "Sweeping Hugs",
+          text: "Cross your arms and place each hand on the opposite shoulder. Inhale and squeeze gently. Exhale — sweep both hands firmly down your arms to your elbows.\n\nRepeat while silently saying the opposite of what you're feeling: 'I am safe.' 'I am enough.' Keep going until something shifts.",
+          hint: ""
+        },
+      ],
+
+    };
+
+    /* =========================================================
+       OPTIONAL: change the title and level labels
+       ========================================================= */
+
+    const title = "What shall I do?";
+
+    const labels = {
+      low:  "Maintenance",
+      mid:  "A bit stressed",
+      high: "Overwhelmed",
+    };
+
+    const emptyCardText = "Tap below for a suggestion";
+
+    /* =========================================================
+       Nothing below here needs editing
+       ========================================================= */
+
+    document.getElementById('page-title').textContent = title;
+
+    function slugify(str) {
+      return str.toLowerCase()
+        .replace(/['']/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    function makeActivityId(level, title) {
+      return level + '-' + slugify(title);
+    }
+
+    // assign stable ids from title (survives reordering the list)
+    ['low','mid','high'].forEach(level => {
+      activities[level].forEach(a => { a.id = makeActivityId(level, a.title); a.custom = false; });
+    });
+
+    function loadStorage(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return fallback;
+        const data = JSON.parse(raw);
+        return Array.isArray(data) ? data : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function saveStorage(key, data) {
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+        return true;
+      } catch {
+        showStorageToast("Couldn't save — your browser may be blocking storage.");
+        return false;
+      }
+    }
+
+    let storageToastTimer = null;
+    function showStorageToast(msg) {
+      const el = document.getElementById('storage-toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(storageToastTimer);
+      storageToastTimer = setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    // custom cards — persisted
+    let customCards = loadStorage('custom-cards', []).filter(c => c && c.id && c.level && c.text);
+    customCards.forEach(c => { c.custom = true; });
+    function saveCustom() { saveStorage('custom-cards', customCards); }
+
+    // favourites — persisted
+    let favourites = new Set(loadStorage('fav-activities', []));
+    function saveFavs() { saveStorage('fav-activities', [...favourites]); }
+
+    // one-time migration from index-based ids (low-0) to title-based ids
+    function migrateLegacyFavourites() {
+      try {
+        if (localStorage.getItem('fav-migrated-v2')) return;
+        const legacyMap = {};
+        ['low','mid','high'].forEach(level => {
+          activities[level].forEach((a, i) => { legacyMap[level + '-' + i] = a.id; });
+        });
+        favourites = new Set([...favourites].map(id => legacyMap[id] || id));
+        saveFavs();
+        localStorage.setItem('fav-migrated-v2', '1');
+      } catch {}
+    }
+    migrateLegacyFavourites();
+
+    // combine built-in + custom into a full pool per level
+    function getPool(level) {
+      return [...activities[level], ...customCards.filter(c => c.level === level)];
+    }
+
+    let currentLevel = 'low';
+    let lastPick     = null;
+    let currentId    = null;
+    let favFilterOn  = false;
+    let editingId    = null;
+    let deleteTargetId = null;
+    let activeModal  = null;
+    let modalReturnFocus = null;
+
+    function getModalFocusables(panel) {
+      return [...panel.querySelectorAll('button, input, textarea, select, [href], [tabindex]:not([tabindex="-1"])')]
+        .filter(el => !el.disabled && el.offsetParent !== null);
+    }
+
+    function trapModalFocus(e, panel) {
+      const focusables = getModalFocusables(panel);
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    function openModal(bgId, focusSelector) {
+      const bg = document.getElementById(bgId);
+      const panel = bg.querySelector('.modal');
+      modalReturnFocus = document.activeElement;
+      bg.classList.remove('hidden');
+      const target = focusSelector ? panel.querySelector(focusSelector) : getModalFocusables(panel)[0];
+      if (target) target.focus();
+    }
+
+    function closeModalLayer(bgId) {
+      document.getElementById(bgId).classList.add('hidden');
+      activeModal = null;
+      if (modalReturnFocus && typeof modalReturnFocus.focus === 'function') {
+        modalReturnFocus.focus();
+      }
+      modalReturnFocus = null;
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!activeModal) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (activeModal === 'edit') closeModal();
+        else closeDeleteModal();
+        return;
+      }
+      if (e.key === 'Tab') {
+        const bgId = activeModal === 'edit' ? 'modal-bg' : 'delete-modal-bg';
+        trapModalFocus(e, document.querySelector('#' + bgId + ' .modal'));
+      }
+    });
+
+    /* ── Picker ── */
+
+    function selectLevel(level) {
+      currentLevel = level;
+      document.querySelectorAll('.chip').forEach(c => {
+        c.className = 'chip';
+        if (c.dataset.level === level) c.className = 'chip active-' + level;
+      });
+      document.getElementById('card-label').textContent = labels[level];
+      document.getElementById('card-title').textContent = '';
+      document.getElementById('card-text').textContent  = emptyCardText;
+      document.getElementById('card-hint').textContent  = '';
+      currentId = null; lastPick = null;
+      updateMainHeart();
+    }
+
+    function findActivityById(id) {
+      for (const level of ['low', 'mid', 'high']) {
+        const found = getPool(level).find(a => a.id === id);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function displayCard(pick, level) {
+      const lvl = level || pick.level || currentLevel;
+      currentId = pick.id;
+      document.getElementById('card-label').textContent = labels[lvl];
+      document.getElementById('card-title').textContent = pick.title || '';
+      document.getElementById('card-text').textContent  = pick.text;
+      document.getElementById('card-hint').textContent  = pick.hint || '';
+      updateMainHeart();
+    }
+
+    function clearCurrentCard() {
+      currentId = null;
+      lastPick = null;
+      document.getElementById('card-title').textContent = '';
+      document.getElementById('card-text').textContent  = emptyCardText;
+      document.getElementById('card-hint').textContent  = '';
+      updateMainHeart();
+    }
+
+    function refreshCurrentCard() {
+      if (!currentId) return;
+      const pick = findActivityById(currentId);
+      if (pick) displayCard(pick);
+      else clearCurrentCard();
+    }
+
+    function roll() {
+      const pool = getPool(currentLevel);
+      if (!pool.length) return;
+      let pick;
+      do { pick = pool[Math.floor(Math.random() * pool.length)]; }
+      while (pool.length > 1 && pick.id === lastPick);
+      lastPick = pick.id;
+      displayCard(pick, currentLevel);
+    }
+
+    function updateMainHeart() {
+      const btn = document.getElementById('main-heart');
+      if (!currentId) { btn.style.display = 'none'; return; }
+      btn.style.display = 'flex';
+      const saved = favourites.has(currentId);
+      btn.textContent = saved ? '♥' : '♡';
+      btn.className   = 'main-heart' + (saved ? ' saved' : '');
+      btn.setAttribute('aria-label', saved ? 'Remove from favourites' : 'Save to favourites');
+    }
+
+    function toggleFavCurrent() {
+      if (!currentId) return;
+      favourites.has(currentId) ? favourites.delete(currentId) : favourites.add(currentId);
+      saveFavs(); updateMainHeart();
+    }
+
+    /* ── Deck ── */
+
+    function showDeck() {
+      document.getElementById('screen-picker').classList.remove('active');
+      document.getElementById('screen-deck').classList.add('active');
+      renderDeck();
+    }
+
+    function showPicker() {
+      document.getElementById('screen-deck').classList.remove('active');
+      document.getElementById('screen-picker').classList.add('active');
+      updateMainHeart();
+    }
+
+    function toggleFavFilter() {
+      favFilterOn = !favFilterOn;
+      document.getElementById('fav-filter-btn').className = 'toolbar-btn' + (favFilterOn ? ' on' : '');
+      renderDeck();
+    }
+
+    function renderDeck() {
+      const container = document.getElementById('deck-list');
+      container.innerHTML = '';
+      let anyShown = false;
+
+      ['low','mid','high'].forEach(level => {
+        const pool = getPool(level).filter(a => !favFilterOn || favourites.has(a.id));
+        if (!pool.length) return;
+        anyShown = true;
+
+        const section = document.createElement('div');
+        section.className = 'deck-section';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'deck-section-title';
+        titleEl.textContent = labels[level];
+        section.appendChild(titleEl);
+
+        pool.forEach(a => {
+          const item = document.createElement('div');
+          item.className = 'deck-item';
+
+          const textWrap = document.createElement('div');
+          textWrap.className = 'deck-item-text';
+
+          if (a.title) {
+            const t = document.createElement('div');
+            t.className = 'deck-item-title';
+            t.textContent = a.title;
+            textWrap.appendChild(t);
+          }
+
+          const body = document.createElement('div');
+          body.className = 'deck-item-main';
+          body.textContent = a.text;
+          textWrap.appendChild(body);
+
+          if (a.hint) {
+            const h = document.createElement('div');
+            h.className = 'deck-item-hint';
+            h.textContent = a.hint;
+            textWrap.appendChild(h);
+          }
+
+          const actions = document.createElement('div');
+          actions.className = 'deck-item-actions';
+
+          const heart = document.createElement('button');
+          const saved = favourites.has(a.id);
+          heart.className = 'heart-btn' + (saved ? ' saved' : '');
+          heart.textContent = saved ? '♥' : '♡';
+          heart.setAttribute('aria-label', saved ? 'Remove from favourites' : 'Save to favourites');
+          heart.onclick = () => {
+            favourites.has(a.id) ? favourites.delete(a.id) : favourites.add(a.id);
+            saveFavs();
+            heart.textContent = favourites.has(a.id) ? '♥' : '♡';
+            heart.className = 'heart-btn' + (favourites.has(a.id) ? ' saved' : '');
+            if (favFilterOn) renderDeck();
+          };
+          actions.appendChild(heart);
+
+          if (a.custom) {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-btn'; editBtn.textContent = '✎';
+            editBtn.setAttribute('aria-label', 'Edit');
+            editBtn.onclick = () => openEditModal(a);
+            actions.appendChild(editBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'del-btn'; delBtn.textContent = '✕';
+            delBtn.setAttribute('aria-label', 'Delete');
+            delBtn.onclick = () => openDeleteModal(a.id);
+            actions.appendChild(delBtn);
+          }
+
+          item.appendChild(textWrap);
+          item.appendChild(actions);
+          section.appendChild(item);
+        });
+
+        container.appendChild(section);
+      });
+
+      if (!anyShown) {
+        const msg = document.createElement('p');
+        msg.className = 'empty-msg';
+        msg.textContent = favFilterOn
+          ? "No favourites yet — tap ♡ on any card to save it."
+          : "No cards found.";
+        container.appendChild(msg);
+      }
+    }
+
+    /* ── Modal ── */
+
+    function openAddModal() {
+      editingId = null;
+      activeModal = 'edit';
+      document.getElementById('modal-title').textContent = 'Add a card';
+      document.getElementById('modal-save').textContent  = 'Save card';
+      document.getElementById('modal-level').value = currentLevel;
+      document.getElementById('modal-name').value  = '';
+      document.getElementById('modal-body').value  = '';
+      document.getElementById('modal-hint').value  = '';
+      document.getElementById('modal-error').style.display = 'none';
+      openModal('modal-bg', '#modal-level');
+    }
+
+    function openEditModal(card) {
+      editingId = card.id;
+      activeModal = 'edit';
+      document.getElementById('modal-title').textContent = 'Edit card';
+      document.getElementById('modal-save').textContent  = 'Save changes';
+      document.getElementById('modal-level').value = card.level;
+      document.getElementById('modal-name').value  = card.title || '';
+      document.getElementById('modal-body').value  = card.text;
+      document.getElementById('modal-hint').value  = card.hint || '';
+      document.getElementById('modal-error').style.display = 'none';
+      openModal('modal-bg', '#modal-name');
+    }
+
+    function closeModal() {
+      closeModalLayer('modal-bg');
+      editingId = null;
+    }
+
+    function modalBgClick(e) {
+      if (e.target === document.getElementById('modal-bg')) closeModal();
+    }
+
+    function openDeleteModal(id) {
+      deleteTargetId = id;
+      activeModal = 'delete';
+      openModal('delete-modal-bg', '.modal-cancel');
+    }
+
+    function closeDeleteModal() {
+      closeModalLayer('delete-modal-bg');
+      deleteTargetId = null;
+    }
+
+    function deleteModalBgClick(e) {
+      if (e.target === document.getElementById('delete-modal-bg')) closeDeleteModal();
+    }
+
+    function confirmDelete() {
+      if (!deleteTargetId) return;
+      const id = deleteTargetId;
+      customCards = customCards.filter(c => c.id !== id);
+      saveCustom();
+      favourites.delete(id);
+      saveFavs();
+      if (id === currentId) {
+        document.getElementById('card-label').textContent = labels[currentLevel];
+        clearCurrentCard();
+      }
+      closeDeleteModal();
+      renderDeck();
+    }
+
+    function saveModal() {
+      const level = document.getElementById('modal-level').value;
+      const name  = document.getElementById('modal-name').value.trim();
+      const body  = document.getElementById('modal-body').value.trim();
+      const hint  = document.getElementById('modal-hint').value.trim();
+
+      if (!name || !body) {
+        document.getElementById('modal-error').style.display = 'block';
+        return;
+      }
+
+      if (editingId) {
+        const card = customCards.find(c => c.id === editingId);
+        if (card) { card.level = level; card.title = name; card.text = body; card.hint = hint; }
+      } else {
+        customCards.push({
+          id: 'custom-' + Date.now(),
+          level, title: name, text: body, hint, custom: true
+        });
+      }
+
+      saveCustom();
+      closeModal();
+      renderDeck();
+      refreshCurrentCard();
+    }
+
+    updateMainHeart();
+  </script>
+
+</body>
+</html>
